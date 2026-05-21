@@ -1,25 +1,42 @@
 import { z } from "zod";
 
-const VapiCallSchema = z.object({
-	id: z.string(),
-	startedAt: z.string(),
-	endedAt: z.string().optional(),
-	customer: z
+export const VapiWebhookSchema = z.object({
+	message: z
 		.object({
-			number: z.string().optional(),
+			type: z.string(),
+			call: z
+				.object({
+					id: z.string(),
+					startedAt: z.string().optional(),
+					endedAt: z.string().optional(),
+					customer: z.object({ number: z.string().optional() }).optional(),
+				})
+				.passthrough()
+				.optional(),
+			customer: z.object({ number: z.string().optional() }).optional(),
+			transcript: z.string().optional(),
+			summary: z.string().optional(),
+			recordingUrl: z.string().optional(),
+			endedReason: z.string().optional(),
+			analysis: z
+				.object({
+					summary: z.string().optional(),
+					structuredData: z.record(z.string(), z.any()).optional(),
+				})
+				.passthrough()
+				.optional(),
+			artifact: z
+				.object({
+					transcript: z.string().optional(),
+					recordingUrl: z.string().optional(),
+				})
+				.passthrough()
+				.optional(),
 		})
-		.optional(),
-	transcript: z.string().optional(),
-	recordingUrl: z.string().url().optional(),
-	summary: z.string().optional(),
+		.passthrough(),
 });
 
-export const VapiPayloadSchema = z.object({
-	type: z.literal("end-of-call-report"),
-	call: VapiCallSchema,
-});
-
-export type VapiPayload = z.infer<typeof VapiPayloadSchema>;
+export type VapiWebhookPayload = z.infer<typeof VapiWebhookSchema>;
 
 export interface CallSummary {
 	name: string;
@@ -28,5 +45,3 @@ export interface CallSummary {
 	desiredTime: string;
 	rawTranscript: string;
 }
-
-export type { VapiPayload as VapiWebhookPayload };

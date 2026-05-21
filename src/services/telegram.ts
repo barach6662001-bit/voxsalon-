@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { config } from "../config.js";
-import type { VapiPayload, CallSummary } from "../types.js";
+import type { CallSummary } from "../types.js";
 import logger from "./logger.js";
 
 let bot: TelegramBot | null = null;
@@ -12,43 +12,36 @@ function getBot(): TelegramBot {
 	return bot;
 }
 
-export async function sendCallSummary(payload: VapiPayload, parsed: CallSummary): Promise<void> {
-	const call = payload.call;
+interface TelegramPayload {
+	phone: string;
+	recordingUrl: string;
+	summary: string;
+	callId: string;
+}
 
-	// Format timestamp
-	const timestamp = call.startedAt
-		? new Date(call.startedAt).toLocaleString("uk-UA", {
-				day: "2-digit",
-				month: "2-digit",
-				year: "numeric",
-				hour: "2-digit",
-				minute: "2-digit",
-			})
-		: "невідомо";
-
-	// Truncate transcript preview
-	const transcriptPreview = call.transcript
-		? call.transcript.slice(0, 200) + (call.transcript.length > 200 ? "..." : "")
-		: "немає";
+export async function sendCallSummary(
+	payload: TelegramPayload,
+	parsed: CallSummary,
+): Promise<void> {
+	const { phone, recordingUrl, summary, callId } = payload;
 
 	const message = `📞 Новий пропущений дзвінок
 
-⏰ ${timestamp}
 👤 ${parsed.name || "не назвався"}
-📱 ${parsed.phone || "не вказано"}
+📱 ${phone}
 💅 Послуга: ${parsed.service || "не вказано"}
 📅 Бажаний час: ${parsed.desiredTime || "не вказано"}
 
-📝 Запис: ${call.recordingUrl || "немає"}
-📋 Початок розмови: ${transcriptPreview}`;
+📝 Запис: ${recordingUrl || "немає"}
+📋 Підсумок: ${summary || "немає"}`;
 
 	try {
 		await getBot().sendMessage(config.telegram.ownerChatId, message, {
 			parse_mode: "Markdown",
 		});
-		logger.info({ chatId: config.telegram.ownerChatId }, "Telegram message sent");
+		logger.info({ chatId: config.telegram.ownerChatId, callId }, "Telegram message sent");
 	} catch (err) {
-		logger.error({ err }, "Failed to send Telegram message");
+		logger.error({ err, callId }, "Failed to send Telegram message");
 		throw err;
 	}
 }

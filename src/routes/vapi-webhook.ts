@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { VapiPayloadSchema } from "../types.js";
+import { VapiWebhookSchema } from "../types.js";
 import { extractCallData } from "../services/parser.js";
 import { sendCallSummary } from "../services/telegram.js";
 import logger from "../services/logger.js";
@@ -17,25 +17,50 @@ async function ensureDataDir(): Promise<void> {
 
 export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void> {
 	fastify.post("/webhook/vapi", async (req: FastifyRequest, reply: FastifyReply) => {
-		const parseResult = VapiPayloadSchema.safeParse(req.body);
+		logger.debug({ rawBody: req.body }, "Raw webhook payload");
+
+		const parseResult = VapiWebhookSchema.safeParse(req.body);
 
 		if (!parseResult.success) {
 			logger.warn({ error: parseResult.error.format() }, "Invalid webhook payload");
 			return reply.status(400).send({ ok: false, error: "Invalid payload" });
 		}
 
-		const payload = parseResult.data;
+		const body = parseResult.data;
+		const m = body.message;
 
-		if (payload.type === "end-of-call-report") {
-			try {
-				const parsed = extractCallData(payload.call.transcript ?? "");
+		logger.info({ type: m.type }, "Received Vapi webhook");
 
-				await Promise.all([sendCallSummary(payload, parsed), appendToLog(payload)]);
+		if (m.type !== "end-of-call-report") {
+			return reply.send({ ok: true });
+		}
 
-				logger.info({ callId: payload.call.id }, "Processed end-of-call-report");
-			} catch (err) {
-				logger.error({ err, callId: payload.call.id }, "Failed to process webhook");
-			}
+		const callerPhone = m.customer?.number ?? m.call?.customer?.number ?? "не вказано";
+		const transcript = m.transcript ?? m.artifact?.transcript ?? "";
+		const summary = m.summary ?? m.analysis?.summary ?? "";
+		const recording = m.recordingUrl ?? m.artifact?.recordingUrl ?? "";
+		const callId = m.call?.id ?? "unknown";
+
+		let parsed = extractCallData(transcript);
+
+		if (m.analysis?.structuredData) {
+			const sd = m.analysis.structuredData;
+			if (sd.service) parsed.service = String(sd.service);
+			if (sd.name) parsed.name = String(sd.name);
+			if (sd.datetime) parsed.desiredTime = String(sd.datetime);
+		}
+
+		parsed.rawTranscript = transcript;
+
+		try {
+			await Promise.all([
+				sendCallSummary({ phone: callerPhone, recordingUrl: recording, summary, callId }, parsed),
+				appendToLog(body),
+			]);
+
+			logger.info({ callId }, "Processed end-of-call-report");
+		} catch (err) {
+			logger.error({ err, callId }, "Failed to process webhook");
 		}
 
 		return reply.send({ ok: true });
