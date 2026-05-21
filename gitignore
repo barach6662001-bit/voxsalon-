@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+data/
+*.jsonl
+.DS_Store
+dist/
+.vercel/
+.fly/
+*.log
