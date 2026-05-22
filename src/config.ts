@@ -7,6 +7,7 @@ const envSchema = z.object({
 	VAPI_API_KEY: z.string().min(1),
 	VAPI_WEBHOOK_SECRET: z.string().optional(),
 	VAPI_ASSISTANT_ID: z.string().min(1),
+	ANTHROPIC_API_KEY: z.string().min(1),
 	TELEGRAM_BOT_TOKEN: z.string().min(1),
 	TELEGRAM_OWNER_CHAT_ID: z.string().min(1),
 	PUBLIC_BASE_URL: z.string().url().optional(),
@@ -31,6 +32,9 @@ export const config = {
 	telegram: {
 		botToken: parsed.data.TELEGRAM_BOT_TOKEN,
 		ownerChatId: parsed.data.TELEGRAM_OWNER_CHAT_ID,
+	},
+	anthropic: {
+		apiKey: parsed.data.ANTHROPIC_API_KEY,
 	},
 	publicBaseUrl: parsed.data.PUBLIC_BASE_URL,
 };

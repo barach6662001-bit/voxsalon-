@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { VapiWebhookSchema } from "../types.js";
 import { extractCallData } from "../services/parser.js";
+import { generateUkrainianSummary } from "../services/summarizer.js";
 import { sendCallSummary } from "../services/telegram.js";
 import logger from "../services/logger.js";
 import { createWriteStream } from "fs";
@@ -37,11 +38,6 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 
 		const callerPhone = m.customer?.number ?? m.call?.customer?.number ?? "не вказано";
 		const transcript = m.transcript ?? m.artifact?.transcript ?? "";
-		const summary =
-			m.analysis?.structuredData?.summary_uk ??
-			m.summary ??
-			m.analysis?.summary ??
-			"";
 		const callId = m.call?.id ?? "unknown";
 		const timestamp = new Date(m.call?.createdAt ?? Date.now());
 
@@ -55,6 +51,14 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 		}
 
 		parsed.rawTranscript = transcript;
+
+		let summary = "";
+		if (transcript) {
+			summary = await generateUkrainianSummary(transcript);
+			if (!summary) {
+				summary = transcript.slice(0, 300);
+			}
+		}
 
 		try {
 			await Promise.all([
