@@ -6,13 +6,31 @@ const client = new Anthropic({
 	apiKey: config.anthropic.apiKey,
 });
 
-export async function generateUkrainianSummary(transcript: string): Promise<string> {
+interface CallSummary {
+	name: string;
+	service: string;
+	datetime: string;
+	summary: string;
+}
+
+export async function summarizeCall(transcript: string): Promise<CallSummary> {
+	const fallback: CallSummary = {
+		name: "не вказано",
+		service: "не вказано",
+		datetime: "не вказано",
+		summary: transcript.slice(0, 200),
+	};
+
+	if (!transcript.trim()) {
+		return fallback;
+	}
+
 	try {
 		const msg = await client.messages.create({
 			model: "claude-haiku-4-5-20251001",
-			max_tokens: 200,
+			max_tokens: 400,
 			system:
-				"Ти - адміністратор косметологічного кабінету. Твоє завдання - коротко підсумувати запис телефонної розмови українською мовою. Напиши 1-2 речення які містять: яку послугу хоче клієнт, бажаний час, ім'я клієнта, номер телефону. Якщо якась інформація відсутня - не згадуй її. Відповідай ТІЛЬКИ українською.",
+				"Ти - адміністратор косметологічного кабінету. Проаналізуй транскрипт телефонної розмови та поверни ТІЛЬКИ сирий JSON (БЕЗ маркап-блоків) з такими ключами:\n- name: ім'я клієнта українською, або 'не вказано'\n- service: яка послуга/процедура цікавить клієнта, або 'не вказано'\n- datetime: бажана дата і час візиту, або 'не вказано'\n- summary: підсумок дзвінка 1-2 речення українською\nВсі значення - українською мовою.",
 			messages: [
 				{
 					role: "user",
@@ -22,12 +40,19 @@ export async function generateUkrainianSummary(transcript: string): Promise<stri
 		});
 
 		const text = msg.content[0];
-		if (text.type === "text") {
-			return text.text;
+		if (text.type !== "text") {
+			return fallback;
 		}
-		return "";
+
+		const parsed = JSON.parse(text.text.trim()) as Partial<CallSummary>;
+		return {
+			name: parsed.name ?? "не вказано",
+			service: parsed.service ?? "не вказано",
+			datetime: parsed.datetime ?? "не вказано",
+			summary: parsed.summary ?? "не вказано",
+		};
 	} catch (err) {
-		logger.error({ err }, "Failed to generate Ukrainian summary");
-		return "";
+		logger.error({ err }, "Failed to summarize call");
+		return fallback;
 	}
 }

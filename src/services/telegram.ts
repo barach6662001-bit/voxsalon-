@@ -13,15 +13,16 @@ function getBot(): TelegramBot {
 
 interface TelegramPayload {
 	phone: string;
+	name: string;
+	service: string;
+	datetime: string;
 	summary: string;
 	callId: string;
 	timestamp: Date;
 }
 
-export async function sendCallSummary(
-	payload: TelegramPayload,
-): Promise<void> {
-	const { phone, summary, callId, timestamp } = payload;
+export async function sendCallSummary(payload: TelegramPayload): Promise<void> {
+	const { phone, name, service, datetime, summary, callId, timestamp } = payload;
 
 	const formattedDate = timestamp.toLocaleDateString("uk-UA", {
 		day: "2-digit",
@@ -37,8 +38,11 @@ export async function sendCallSummary(
 
 ⏰ ${formattedDate} ${formattedTime}
 📱 ${phone}
+👤 Ім'я: ${name}
+💅 Послуга: ${service}
+📅 Бажаний час: ${datetime}
 
-${summary || "немає підсумку"}`;
+📋 ${summary}`;
 
 	try {
 		await getBot().sendMessage(config.telegram.ownerChatId, message, {

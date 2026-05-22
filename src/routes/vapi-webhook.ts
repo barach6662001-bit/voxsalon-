@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { VapiWebhookSchema } from "../types.js";
 import { extractCallData } from "../services/parser.js";
-import { generateUkrainianSummary } from "../services/summarizer.js";
+import { summarizeCall } from "../services/summarizer.js";
 import { sendCallSummary } from "../services/telegram.js";
 import logger from "../services/logger.js";
 import { createWriteStream } from "fs";
@@ -52,17 +52,27 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 
 		parsed.rawTranscript = transcript;
 
-		let summary = "";
+		let callSummary = {
+			name: "не вказано",
+			service: "не вказано",
+			datetime: "не вказано",
+			summary: transcript.slice(0, 200),
+		};
 		if (transcript) {
-			summary = await generateUkrainianSummary(transcript);
-			if (!summary) {
-				summary = transcript.slice(0, 300);
-			}
+			callSummary = await summarizeCall(transcript);
 		}
 
 		try {
 			await Promise.all([
-				sendCallSummary({ phone: callerPhone, summary, callId, timestamp }),
+				sendCallSummary({
+					phone: callerPhone,
+					name: callSummary.name,
+					service: callSummary.service,
+					datetime: callSummary.datetime,
+					summary: callSummary.summary,
+					callId,
+					timestamp,
+				}),
 				appendToLog(body),
 			]);
 
