@@ -58,7 +58,7 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 
 		try {
 			await Promise.all([
-				sendCallSummary({ phone: callerPhone, summary, callId, timestamp }, parsed),
+				sendCallSummary({ phone: callerPhone, summary, callId, timestamp }),
 				appendToLog(body),
 			]);
 

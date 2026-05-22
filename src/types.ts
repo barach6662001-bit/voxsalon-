@@ -7,6 +7,7 @@ export const VapiWebhookSchema = z.object({
 			call: z
 				.object({
 					id: z.string(),
+					createdAt: z.string().optional(),
 					startedAt: z.string().optional(),
 					endedAt: z.string().optional(),
 					customer: z.object({ number: z.string().optional() }).optional(),

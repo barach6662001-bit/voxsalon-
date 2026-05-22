@@ -1,6 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
 import { config } from "../config.js";
-import type { CallSummary } from "../types.js";
 import logger from "./logger.js";
 
 let bot: TelegramBot | null = null;
@@ -21,7 +20,6 @@ interface TelegramPayload {
 
 export async function sendCallSummary(
 	payload: TelegramPayload,
-	parsed: CallSummary,
 ): Promise<void> {
 	const { phone, summary, callId, timestamp } = payload;
 
