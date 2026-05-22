@@ -37,9 +37,13 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 
 		const callerPhone = m.customer?.number ?? m.call?.customer?.number ?? "не вказано";
 		const transcript = m.transcript ?? m.artifact?.transcript ?? "";
-		const summary = m.summary ?? m.analysis?.summary ?? "";
-		const recording = m.recordingUrl ?? m.artifact?.recordingUrl ?? "";
+		const summary =
+			m.analysis?.structuredData?.summary_uk ??
+			m.summary ??
+			m.analysis?.summary ??
+			"";
 		const callId = m.call?.id ?? "unknown";
+		const timestamp = new Date(m.call?.createdAt ?? Date.now());
 
 		let parsed = extractCallData(transcript);
 
@@ -54,7 +58,7 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 
 		try {
 			await Promise.all([
-				sendCallSummary({ phone: callerPhone, recordingUrl: recording, summary, callId }, parsed),
+				sendCallSummary({ phone: callerPhone, summary, callId, timestamp }, parsed),
 				appendToLog(body),
 			]);
 

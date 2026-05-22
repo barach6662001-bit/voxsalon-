@@ -14,26 +14,33 @@ function getBot(): TelegramBot {
 
 interface TelegramPayload {
 	phone: string;
-	recordingUrl: string;
 	summary: string;
 	callId: string;
+	timestamp: Date;
 }
 
 export async function sendCallSummary(
 	payload: TelegramPayload,
 	parsed: CallSummary,
 ): Promise<void> {
-	const { phone, recordingUrl, summary, callId } = payload;
+	const { phone, summary, callId, timestamp } = payload;
+
+	const formattedDate = timestamp.toLocaleDateString("uk-UA", {
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+	});
+	const formattedTime = timestamp.toLocaleTimeString("uk-UA", {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
 
 	const message = `📞 Новий пропущений дзвінок
 
-👤 ${parsed.name || "не назвався"}
+⏰ ${formattedDate} ${formattedTime}
 📱 ${phone}
-💅 Послуга: ${parsed.service || "не вказано"}
-📅 Бажаний час: ${parsed.desiredTime || "не вказано"}
 
-📝 Запис: ${recordingUrl || "немає"}
-📋 Підсумок: ${summary || "немає"}`;
+${summary || "немає підсумку"}`;
 
 	try {
 		await getBot().sendMessage(config.telegram.ownerChatId, message, {
