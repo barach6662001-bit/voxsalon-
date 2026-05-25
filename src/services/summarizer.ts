@@ -18,26 +18,22 @@ interface CallSummary {
 	leftPhone: string;
 }
 
-const SYSTEM_PROMPT = `Ти - адміністратор косметологічного кабінету. Проаналізуй транскрипт дзвінка та поверни ТІЛЬКИ сирий JSON (БЕЗ маркап-блоків, БЕЗ кодових блоків).
+const SYSTEM_PROMPT = `Ти - адміністратор косметологічного кабінету. Твоє завдання - проаналізувати транскрипт дзвінка і повернути JSON з результатами.
 
-Формат JSON:
-{
-  "name": "ім'я клієнта українською, або 'не вказано'",
-  "service": "послуга/процедура яка цікавить, або 'не вказано'",
-  "datetime": "бажана дата і час візиту, або 'не вказано'",
-  "callerPhone": "номер телефону з якого дзвонили, або 'не вказано'",
-  "leftPhone": "номер телефону який клієнт залишив (може відрізнятися від callerPhone), або 'не вказано'",
-  "summary": "короткий підсумок: що сталось, який результат дзвінка (1-2 речення)",
-  "keyPoints": ["короткий пункт 1", "короткий пункт 2"],
-  "actionItems": ["конкретна дія для адміністратора 1", "конкретна дія 2"]
-}
+ВИХІДНИЙ ФОРМАТ (тільки JSON, без будь-яких додаткових символів):
+{"name":"Оля","service":"чистка обличчя","datetime":"26.05.2026 14:00","callerPhone":"0671234567","leftPhone":"0671234567","summary":"Клієнт записується на чистку обличчя","keyPoints":["Клієнт: Оля","Телефон: 0671234567","Послуга: чистка обличчя"],"actionItems":["Передзвонити для підтвердження запису","Записати на чистку обличчя"]}
 
 ПРАВИЛА:
-- summary має бути КОРОТКИМ підсумком результату дзвінка, НЕ переказом діалогу
-- keyPoints: головне з розмови (запит, уточнення, важливі деталі)
-- actionItems: що адміністратор має зробити (передзвонити, записати, уточнити)
-- Обидва телефони - окремо! callerPhone і leftPhone можуть бути різними
-- Всі значення - українською мовою`;
+1. Поверни ТІЛЬКИ сирий JSON - без кодових блоків, без markdown, без пояснень
+2. name: ім'я клієнта українською, або "не вказано"
+3. service: яка послуга цікавить, або "не вказано"
+4. datetime: бажана дата і час у форматі "DD.MM.YYYY HH:mm", або "не вказано"
+5. callerPhone: номер телефону звідки дзвонили, або "не вказано"
+6. leftPhone: номер який клієнт залишив (може відрізнятися), або "не вказано"
+7. summary: ОДНИМ реченням - результат дзвінка (не переказ!)
+8. keyPoints: масив коротких фактів з розмови
+9. actionItems: масив конкретних дій для адміністратора
+10. Всі значення українською`;
 
 export async function summarizeCall(transcript: string): Promise<CallSummary> {
 	const fallback: CallSummary = {
@@ -58,7 +54,7 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 	try {
 		const msg = await client.messages.create({
 			model: config.anthropic.summaryModel,
-			max_tokens: 800,
+			max_tokens: 1000,
 			system: SYSTEM_PROMPT,
 			messages: [
 				{
@@ -75,7 +71,7 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 
 		let rawText = text.text.trim();
 		// Remove markdown code blocks if present
-		rawText = rawText.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+		rawText = rawText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
 
 		const parsed = JSON.parse(rawText) as Partial<CallSummary>;
 		return {

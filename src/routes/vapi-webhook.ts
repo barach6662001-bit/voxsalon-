@@ -85,7 +85,7 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 				appendToLog(body),
 			]);
 
-			logger.info({ callId }, "Processed end-of-call-report");
+			logger.info({ callId, callSummary }, "Processed end-of-call-report");
 		} catch (err) {
 			logger.error({ err, callId }, "Failed to process webhook");
 		}
