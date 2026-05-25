@@ -1,14 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config.js";
 import logger from "./logger.js";
-
-const client = new Anthropic({
-	apiKey: config.anthropic.apiKey,
-	...(config.anthropic.baseUrl ? { baseURL: config.anthropic.baseUrl } : {}),
-	defaultHeaders: {
-		"anthropic-version": "2023-06-01",
-	},
-});
 
 interface CallSummary {
 	name: string;
@@ -54,35 +45,40 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 		return fallback;
 	}
 
-	logger.info({
-		baseUrl: config.anthropic.baseUrl,
-		model: config.anthropic.summaryModel,
-	}, "Calling Anthropic API");
+	const baseUrl = config.anthropic.baseUrl ?? "https://api.anthropic.com";
 
 	try {
-		const msg = await client.messages.create({
-			model: config.anthropic.summaryModel,
-			max_tokens: 1000,
-			system: SYSTEM_PROMPT,
-			messages: [
-				{
-					role: "user",
-					content: transcript,
-				},
-			],
+		const response = await fetch(`${baseUrl}/v1/messages`, {
+			method: "POST",
+			headers: {
+				"x-api-key": config.anthropic.apiKey,
+				"Content-Type": "application/json",
+				"anthropic-version": "2023-06-01",
+			},
+			body: JSON.stringify({
+				model: config.anthropic.summaryModel,
+				max_tokens: 1000,
+				system: SYSTEM_PROMPT,
+				messages: [{ role: "user", content: transcript }],
+			}),
 		});
 
-		const text = msg.content.find((block) => block.type === "text");
-		if (!text || text.type !== "text") {
-			logger.warn({ content: msg.content }, "No text block in AI response");
+		if (!response.ok) {
+			const errorText = await response.text();
+			logger.error({ status: response.status, error: errorText }, "Anthropic API error");
 			return fallback;
 		}
 
-		let rawText = text.text.trim();
-		// Remove markdown code blocks if present
-		rawText = rawText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+		const data = await response.json() as { content: Array<{type: string; text?: string}> };
 
-		logger.info({ rawText }, "AI response raw text");
+		const textBlock = data.content?.find((block) => block.type === "text");
+		if (!textBlock?.text) {
+			logger.warn({ content: data.content }, "No text block in AI response");
+			return fallback;
+		}
+
+		let rawText = textBlock.text.trim();
+		rawText = rawText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
 
 		const parsed = JSON.parse(rawText) as Partial<CallSummary>;
 		return {
