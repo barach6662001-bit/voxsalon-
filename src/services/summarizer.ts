@@ -4,6 +4,7 @@ import logger from "./logger.js";
 
 const client = new Anthropic({
 	apiKey: config.anthropic.apiKey,
+	...(config.anthropic.baseUrl ? { baseURL: config.anthropic.baseUrl } : {}),
 });
 
 interface CallSummary {
@@ -27,7 +28,7 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 
 	try {
 		const msg = await client.messages.create({
-			model: "claude-haiku-4-5-20251001",
+			model: config.anthropic.summaryModel,
 			max_tokens: 400,
 			system:
 				"Ти - адміністратор косметологічного кабінету. Проаналізуй транскрипт телефонної розмови та поверни ТІЛЬКИ сирий JSON (БЕЗ маркап-блоків) з такими ключами:\n- name: ім'я клієнта українською, або 'не вказано'\n- service: яка послуга/процедура цікавить клієнта, або 'не вказано'\n- datetime: бажана дата і час візиту, або 'не вказано'\n- summary: підсумок дзвінка 1-2 речення українською\nВсі значення - українською мовою.",

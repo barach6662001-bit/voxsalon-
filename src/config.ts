@@ -8,6 +8,8 @@ const envSchema = z.object({
 	VAPI_WEBHOOK_SECRET: z.string().optional(),
 	VAPI_ASSISTANT_ID: z.string().min(1),
 	ANTHROPIC_API_KEY: z.string().min(1),
+	ANTHROPIC_BASE_URL: z.string().url().optional(),
+	ANTHROPIC_SUMMARY_MODEL: z.string().default("claude-haiku-4-5-20251001"),
 	TELEGRAM_BOT_TOKEN: z.string().min(1),
 	TELEGRAM_OWNER_CHAT_ID: z.string().min(1),
 	PUBLIC_BASE_URL: z.string().url().optional(),
@@ -35,6 +37,8 @@ export const config = {
 	},
 	anthropic: {
 		apiKey: parsed.data.ANTHROPIC_API_KEY,
+		baseUrl: parsed.data.ANTHROPIC_BASE_URL,
+		summaryModel: parsed.data.ANTHROPIC_SUMMARY_MODEL,
 	},
 	publicBaseUrl: parsed.data.PUBLIC_BASE_URL,
 };
