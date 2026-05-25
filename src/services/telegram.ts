@@ -12,7 +12,8 @@ function getBot(): TelegramBot {
 }
 
 interface TelegramPayload {
-	phone: string;
+	callerPhone: string;
+	leftPhone: string;
 	name: string;
 	service: string;
 	datetime: string;
@@ -24,7 +25,7 @@ interface TelegramPayload {
 }
 
 export async function sendCallSummary(payload: TelegramPayload): Promise<void> {
-	const { phone, name, service, datetime, summary, keyPoints, actionItems, callId, timestamp } = payload;
+	const { callerPhone, leftPhone, name, service, datetime, summary, keyPoints, actionItems, callId, timestamp } = payload;
 
 	const formattedDate = timestamp.toLocaleDateString("uk-UA", {
 		day: "2-digit",
@@ -35,6 +36,10 @@ export async function sendCallSummary(payload: TelegramPayload): Promise<void> {
 		hour: "2-digit",
 		minute: "2-digit",
 	});
+
+	const phoneLine = leftPhone !== "не вказано" && leftPhone !== callerPhone
+		? `📱 Дзвонив: ${callerPhone}\n📱 Лишив: ${leftPhone}`
+		: `📱 ${callerPhone}`;
 
 	const keyPointsText = keyPoints.length > 0
 		? `\n📌 Ключові моменти:\n${keyPoints.map(p => `• ${p}`).join("\n")}`
@@ -47,7 +52,7 @@ export async function sendCallSummary(payload: TelegramPayload): Promise<void> {
 	const message = `📞 Новий пропущений дзвінок
 
 ⏰ ${formattedDate} ${formattedTime}
-📱 ${phone}
+${phoneLine}
 👤 Ім'я: ${name}
 💅 Послуга: ${service}
 📅 Бажаний час: ${datetime}

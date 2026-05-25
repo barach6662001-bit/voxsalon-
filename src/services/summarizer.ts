@@ -14,7 +14,30 @@ interface CallSummary {
 	summary: string;
 	actionItems: string[];
 	keyPoints: string[];
+	callerPhone: string;
+	leftPhone: string;
 }
+
+const SYSTEM_PROMPT = `Ти - адміністратор косметологічного кабінету. Проаналізуй транскрипт дзвінка та поверни ТІЛЬКИ сирий JSON (БЕЗ маркап-блоків, БЕЗ кодових блоків).
+
+Формат JSON:
+{
+  "name": "ім'я клієнта українською, або 'не вказано'",
+  "service": "послуга/процедура яка цікавить, або 'не вказано'",
+  "datetime": "бажана дата і час візиту, або 'не вказано'",
+  "callerPhone": "номер телефону з якого дзвонили, або 'не вказано'",
+  "leftPhone": "номер телефону який клієнт залишив (може відрізнятися від callerPhone), або 'не вказано'",
+  "summary": "короткий підсумок: що сталось, який результат дзвінка (1-2 речення)",
+  "keyPoints": ["короткий пункт 1", "короткий пункт 2"],
+  "actionItems": ["конкретна дія для адміністратора 1", "конкретна дія 2"]
+}
+
+ПРАВИЛА:
+- summary має бути КОРОТКИМ підсумком результату дзвінка, НЕ переказом діалогу
+- keyPoints: головне з розмови (запит, уточнення, важливі деталі)
+- actionItems: що адміністратор має зробити (передзвонити, записати, уточнити)
+- Обидва телефони - окремо! callerPhone і leftPhone можуть бути різними
+- Всі значення - українською мовою`;
 
 export async function summarizeCall(transcript: string): Promise<CallSummary> {
 	const fallback: CallSummary = {
@@ -24,6 +47,8 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 		summary: transcript.slice(0, 200),
 		actionItems: [],
 		keyPoints: [],
+		callerPhone: "не вказано",
+		leftPhone: "не вказано",
 	};
 
 	if (!transcript.trim()) {
@@ -33,9 +58,8 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 	try {
 		const msg = await client.messages.create({
 			model: config.anthropic.summaryModel,
-			max_tokens: 600,
-			system:
-				"Ти - адміністратор косметологічного кабінету. Проаналізуй транскрипт дзвінка та поверни ТІЛЬКИ сирий JSON (БЕЗ маркап-блоків).\n\nФормат:\n{\n  \"name\": \"ім'я клієнта українською, або 'не вказано'\",\n  \"service\": \"послуга/процедура яка цікавить, або 'не вказано'\",\n  \"datetime\": \"бажана дата і час візиту, або 'не вказано'\",\n  \"summary\": \"стислий підсумок: що сталось, який результат дзвінка (1-2 речення)\",\n  \"keyPoints\": [\"короткий пункт 1\", \"короткий пункт 2\", \"...\"],\n  \"actionItems\": [\"що потрібно зробити після дзвінка - конкретна дія\"]\n}\n\nkeyPoints: головне з розмови — запит клієнта, уточнення, важливі деталі (ім'я, телефон, опис проблеми).\nactionItems: конкретні дії для адміністратора — передзвонити, записати на дату, уточнити ціну, тощо.\nВсі значення - українською мовою.",
+			max_tokens: 800,
+			system: SYSTEM_PROMPT,
 			messages: [
 				{
 					role: "user",
@@ -57,6 +81,8 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 			summary: parsed.summary ?? "не вказано",
 			keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
 			actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
+			callerPhone: parsed.callerPhone ?? "не вказано",
+			leftPhone: parsed.leftPhone ?? "не вказано",
 		};
 	} catch (err) {
 		logger.error({ err }, "Failed to summarize call");

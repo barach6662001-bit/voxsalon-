@@ -52,22 +52,27 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 
 		parsed.rawTranscript = transcript;
 
-		let callSummary: { name: string; service: string; datetime: string; summary: string; keyPoints: string[]; actionItems: string[] } = {
+		let callSummary: { name: string; service: string; datetime: string; summary: string; keyPoints: string[]; actionItems: string[]; callerPhone: string; leftPhone: string } = {
 			name: "не вказано",
 			service: "не вказано",
 			datetime: "не вказано",
 			summary: transcript.slice(0, 200),
 			keyPoints: [],
 			actionItems: [],
+			callerPhone: callerPhone,
+			leftPhone: "не вказано",
 		};
 		if (transcript) {
 			callSummary = await summarizeCall(transcript);
+			// Use actual caller phone from webhook, leftPhone from AI
+			callSummary.callerPhone = callerPhone;
 		}
 
 		try {
 			await Promise.all([
 				sendCallSummary({
-					phone: callerPhone,
+					callerPhone: callSummary.callerPhone,
+					leftPhone: callSummary.leftPhone,
 					name: callSummary.name,
 					service: callSummary.service,
 					datetime: callSummary.datetime,
