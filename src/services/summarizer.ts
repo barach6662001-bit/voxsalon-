@@ -5,6 +5,9 @@ import logger from "./logger.js";
 const client = new Anthropic({
 	apiKey: config.anthropic.apiKey,
 	...(config.anthropic.baseUrl ? { baseURL: config.anthropic.baseUrl } : {}),
+	defaultHeaders: {
+		"anthropic-version": "2023-06-01",
+	},
 });
 
 interface CallSummary {
@@ -50,6 +53,11 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 	if (!transcript.trim()) {
 		return fallback;
 	}
+
+	logger.info({
+		baseUrl: config.anthropic.baseUrl,
+		model: config.anthropic.summaryModel,
+	}, "Calling Anthropic API");
 
 	try {
 		const msg = await client.messages.create({
