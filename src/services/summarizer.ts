@@ -66,12 +66,15 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 
 		const text = msg.content.find((block) => block.type === "text");
 		if (!text || text.type !== "text") {
+			logger.warn({ content: msg.content }, "No text block in AI response");
 			return fallback;
 		}
 
 		let rawText = text.text.trim();
 		// Remove markdown code blocks if present
 		rawText = rawText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+
+		logger.info({ rawText }, "AI response raw text");
 
 		const parsed = JSON.parse(rawText) as Partial<CallSummary>;
 		return {
@@ -84,8 +87,9 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 			callerPhone: parsed.callerPhone ?? "не вказано",
 			leftPhone: parsed.leftPhone ?? "не вказано",
 		};
-	} catch (err) {
-		logger.error({ err, transcript: transcript.slice(0, 100) }, "Failed to summarize call");
+	} catch (err: unknown) {
+		const error = err as Error;
+		logger.error({ err: error.message, transcript: transcript.slice(0, 100) }, "Failed to summarize call");
 		return fallback;
 	}
 }
