@@ -68,8 +68,8 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 			],
 		});
 
-		const text = msg.content[0];
-		if (text.type !== "text") {
+		const text = msg.content.find((block) => block.type === "text");
+		if (!text || text.type !== "text") {
 			return fallback;
 		}
 
