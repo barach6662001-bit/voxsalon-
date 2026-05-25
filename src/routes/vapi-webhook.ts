@@ -52,11 +52,13 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 
 		parsed.rawTranscript = transcript;
 
-		let callSummary = {
+		let callSummary: { name: string; service: string; datetime: string; summary: string; keyPoints: string[]; actionItems: string[] } = {
 			name: "не вказано",
 			service: "не вказано",
 			datetime: "не вказано",
 			summary: transcript.slice(0, 200),
+			keyPoints: [],
+			actionItems: [],
 		};
 		if (transcript) {
 			callSummary = await summarizeCall(transcript);
@@ -70,6 +72,8 @@ export async function vapiWebhookRoutes(fastify: FastifyInstance): Promise<void>
 					service: callSummary.service,
 					datetime: callSummary.datetime,
 					summary: callSummary.summary,
+					keyPoints: callSummary.keyPoints,
+					actionItems: callSummary.actionItems,
 					callId,
 					timestamp,
 				}),
