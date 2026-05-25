@@ -4,7 +4,6 @@ import { config } from "./config.js";
 import logger from "./services/logger.js";
 import { healthRoutes } from "./routes/health.js";
 import { vapiWebhookRoutes } from "./routes/vapi-webhook.js";
-import Anthropic from "@anthropic-ai/sdk";
 
 const fastify = Fastify({
 	logger: false,
@@ -23,19 +22,25 @@ fastify.get("/debug/env", async (_req, reply) => {
 	});
 });
 
-fastify.get("/debug/test-anthropic", async (_req, reply) => {
-	const client = new Anthropic({
-		apiKey: config.anthropic.apiKey,
-		...(config.anthropic.baseUrl ? { baseURL: config.anthropic.baseUrl } : {}),
-	});
-
+fastify.get("/debug/test-fetch", async (_req, reply) => {
+	// Test with x-api-key header (gym-rat format)
 	try {
-		const msg = await client.messages.create({
-			model: config.anthropic.summaryModel,
-			max_tokens: 50,
-			messages: [{ role: "user", content: "say hi" }],
+		const response = await fetch("https://gym-rat.online/v1/messages", {
+			method: "POST",
+			headers: {
+				"x-api-key": config.anthropic.apiKey,
+				"Content-Type": "application/json",
+				"anthropic-version": "2023-06-01",
+			},
+			body: JSON.stringify({
+				model: config.anthropic.summaryModel,
+				max_tokens: 50,
+				messages: [{ role: "user", content: "say hi" }],
+			}),
 		});
-		return reply.send({ success: true, response: msg.content });
+
+		const data = await response.text();
+		return reply.send({ status: response.status, data: data.slice(0, 500) });
 	} catch (err: unknown) {
 		const error = err as Error;
 		return reply.send({ success: false, error: error.message });
