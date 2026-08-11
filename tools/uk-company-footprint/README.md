@@ -1,9 +1,60 @@
-# UK legal-firm digital-footprint finder
+# UK company research tools
 
-Standalone data-engineering utility (unrelated to the VoxSalon app — lives under
-`tools/` so it stays isolated). It finds UK companies in the **legal-activities**
-SIC band that appear to have **no digital footprint**, enriches them with their
-active directors / PSCs, and exports a CSV.
+Standalone data-engineering utilities (unrelated to the VoxSalon app — they live
+under `tools/` so they stay isolated). Two scripts, different jobs:
+
+| Script | Question it answers | Needs API key? |
+|---|---|---|
+| **`find_web_leads.py`** ← *start here for sales* | Which trading firms have **no website but are reachable**? | **No** — free bulk file |
+| `find_uk_legal_firms.py` | Which firms have **zero digital footprint**, and who are their directors? | Yes (`CH_API_KEY`) |
+
+---
+
+## `find_web_leads.py` — leads for web / telephony services
+
+Targets the commercially useful segment:
+
+```
+trading  +  no website of its own  +  a contact channel exists  ->  HOT_LEAD
+```
+
+Uses the **free Companies House bulk data product** (~470 MB, ~5.7 M companies,
+no API key, refreshed monthly), so there is no registration step at all.
+
+Verdicts, ranked best-first in the CSV:
+
+| Verdict | Meaning | Worth pitching? |
+|---|---|---|
+| `HOT_LEAD` | Trading, no own site, but listed in a directory / regulator register / social | **Yes** |
+| `NO_PRESENCE` | Nothing online at all | Hard — no way to make contact |
+| `WEAK_SITE` | Only a Wix/WordPress.com-style page | Yes — upgrade pitch |
+| `HAS_WEBSITE` | Already has its own domain | No |
+| `CHECK_FAILED` | Search unavailable | Re-run |
+
+```bash
+pip install -r requirements.txt
+python find_web_leads.py --check 60
+# useful options:
+#   --stats-only                    # aggregate counts, no search
+#   --postcode-prefix M L S1        # local outreach only
+#   --sic 69100 69102               # narrow the sector
+#   --include-non-trading           # also keep DORMANT / NO ACCOUNTS FILED
+#   --search-delay 3                # be gentler on the search engine
+```
+
+**Why "no phone / no contact form at all" is the wrong filter for sales:** a firm
+with no website, no phone and no listing is a firm you cannot pitch. In the legal
+SIC band most such records are dormant shells or formation-agent registrations.
+Measured on the August 2026 register: of 18,125 active Ltd/LLP firms in SIC 69xxx
+incorporated since 2012, **5,869 (32%) are DORMANT or have NO ACCOUNTS FILED** —
+no operations, no budget, not customers. This script drops them by default.
+
+Outreach is subject to **UK GDPR and PECR**: screen marketing calls against the
+TPS/CTPS, identify yourself, and honour opt-outs.
+
+---
+
+## `find_uk_legal_firms.py` — zero-footprint research (API)
 
 ## What it does
 
