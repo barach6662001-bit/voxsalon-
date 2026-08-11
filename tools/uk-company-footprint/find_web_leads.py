@@ -192,12 +192,22 @@ def download_bulk(dest: str, url: str | None = None) -> str:
 
 
 def iter_bulk_rows(zip_path: str) -> Iterable[dict[str, str]]:
+    """Yield rows with **normalised keys**.
+
+    The Companies House bulk CSV ships several headers with a leading space
+    (` CompanyNumber`, ` RegAddress.AddressLine2`). Reading them naively yields a
+    blank company number for every row, so strip the header names up front.
+    """
     with zipfile.ZipFile(zip_path) as z:
         name = z.namelist()[0]
         with z.open(name) as fh:
-            reader = csv.DictReader(io.TextIOWrapper(fh, encoding="utf-8", errors="replace"))
-            for row in reader:
-                yield row
+            text = io.TextIOWrapper(fh, encoding="utf-8", errors="replace")
+            reader = csv.reader(text)
+            header = [h.strip() for h in next(reader)]
+            for values in reader:
+                if not values:
+                    continue
+                yield dict(zip(header, values))
 
 
 def parse_date(ddmmyyyy: str) -> str:
